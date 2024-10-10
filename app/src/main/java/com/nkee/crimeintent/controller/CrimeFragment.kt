@@ -1,8 +1,10 @@
 package com.nkee.crimeintent.controller
 
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,6 +14,10 @@ import android.widget.EditText
 import androidx.fragment.app.Fragment
 import com.nkee.crimeintent.R
 import com.nkee.crimeintent.model.Crime
+import java.util.UUID
+
+private const val ARG_CRIME_ID = "crime_id"
+private const val TAG = "CrimeFragment"
 
 class CrimeFragment : Fragment() {
     private lateinit var crime: Crime
@@ -22,6 +28,13 @@ class CrimeFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
+        val crimeId: UUID? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arguments?.getSerializable(ARG_CRIME_ID, UUID::class.java)
+        } else {
+            arguments?.getSerializable(ARG_CRIME_ID) as UUID
+        }
+        Log.d(TAG, "args bundle crime ID: $crimeId")
+        // Загрузка преступления из базы данных
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -56,6 +69,17 @@ class CrimeFragment : Fragment() {
             setOnCheckedChangeListener { _, isChecked ->
                 crime.isSolved = isChecked
             }
+        }
+    }
+    companion object {
+        fun newInstance(crimeId: UUID): CrimeFragment {
+            val args = Bundle().apply {
+                putSerializable(ARG_CRIME_ID, crimeId)
+            }
+
+            val fragment = CrimeFragment()
+            fragment.arguments = args
+            return fragment
         }
     }
 }
