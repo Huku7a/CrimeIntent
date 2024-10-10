@@ -1,14 +1,10 @@
 package com.nkee.crimeintent.controller
 
 import androidx.lifecycle.ViewModel
-import com.nkee.crimeintent.model.Crime
+import com.nkee.crimeintent.CrimeRepository
 
 class CrimeListViewModel : ViewModel() {
-    val crimes = mutableListOf<Crime>()
+    private val crimeRepository = CrimeRepository.get()
+    val crimeListLiveData = crimeRepository.getCrimes()
 
-    init {
-        for (i in 1 .. 100) {
-            crimes += Crime(title = "Crime #$i", isSolved = i % 2 == 0)
-        }
-    }
 }
