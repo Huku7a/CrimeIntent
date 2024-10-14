@@ -15,10 +15,13 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.nkee.crimeintent.R
 import com.nkee.crimeintent.model.Crime
+import java.util.Date
 import java.util.UUID
 
 private const val ARG_CRIME_ID = "crime_id"
 private const val TAG = "CrimeFragment"
+private const val DIALOG_DATE = "DialogDate"
+const val REQUEST_DATE = "RequestCrimeDate"
 
 class CrimeFragment : Fragment() {
     private lateinit var crime: Crime
@@ -45,11 +48,6 @@ class CrimeFragment : Fragment() {
         titleField = view.findViewById(R.id.crime_title)
         dateButton = view.findViewById(R.id.crime_date)
         solvedCheckBox = view.findViewById(R.id.crime_solved)
-
-        dateButton.apply {
-            text = crime.date.toString()
-            isEnabled = false
-        }
 
         return view
     }
@@ -83,6 +81,25 @@ class CrimeFragment : Fragment() {
                 crime.isSolved = isChecked
             }
         }
+
+        dateButton.setOnClickListener {
+            DatePickerFragment.newInstance(crime.date).apply {
+                this@CrimeFragment.parentFragmentManager.setFragmentResultListener(REQUEST_DATE, this@CrimeFragment.viewLifecycleOwner) { _, bundle ->
+                    val result = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        bundle.getSerializable(REQUEST_DATE, Date::class.java)
+                    } else {
+                        bundle.getSerializable(REQUEST_DATE) as Date
+                    }
+                    onDateSelected(result as Date)
+                }
+                show(this@CrimeFragment.parentFragmentManager, DIALOG_DATE)
+            }
+        }
+    }
+
+    private fun onDateSelected(date: Date) {
+        crime.date = date
+        updateUI()
     }
 
     private fun updateUI() {

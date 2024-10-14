@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.switchMap
-import com.nkee.crimeintent.CrimeRepository
+import com.nkee.crimeintent.data.CrimeRepository
 import com.nkee.crimeintent.model.Crime
 import java.util.UUID
 

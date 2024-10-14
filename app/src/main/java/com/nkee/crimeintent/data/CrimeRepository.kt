@@ -1,4 +1,4 @@
-package com.nkee.crimeintent
+package com.nkee.crimeintent.data
 
 import android.content.Context
 import androidx.lifecycle.LiveData
