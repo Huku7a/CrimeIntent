@@ -12,6 +12,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.nkee.crimeintent.R
 import com.nkee.crimeintent.model.Crime
 import java.util.UUID
@@ -24,6 +25,7 @@ class CrimeFragment : Fragment() {
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
+    private val crimeDetailViewModel by lazy { ViewModelProvider(this)[CrimeDetailViewModel::class.java] }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +37,7 @@ class CrimeFragment : Fragment() {
         }
         Log.d(TAG, "args bundle crime ID: $crimeId")
         // Загрузка преступления из базы данных
+        crimeId?.let { crimeDetailViewModel.loadCrime(it) } ?: Log.w(TAG, "args bundle crime ID is null")
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -49,6 +52,16 @@ class CrimeFragment : Fragment() {
         }
 
         return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner) { crime ->
+            crime?.let {
+                this.crime = crime
+                updateUI()
+            }
+        }
     }
 
     override fun onStart() {
@@ -71,6 +84,21 @@ class CrimeFragment : Fragment() {
             }
         }
     }
+
+    private fun updateUI() {
+        titleField.setText(crime.title)
+        dateButton.text = crime.date.toString()
+        solvedCheckBox.apply {
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        crimeDetailViewModel.saveCrime(crime)
+    }
+
     companion object {
         fun newInstance(crimeId: UUID): CrimeFragment {
             val args = Bundle().apply {
