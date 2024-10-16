@@ -4,11 +4,16 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -60,6 +65,24 @@ class CrimeListFragment : Fragment() {
                 updateUI(crimes)
             }
         }
+        (requireActivity() as MenuHost).addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.fragment_crime_list, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    R.id.new_crime -> {
+                        val crime = Crime()
+                        crimeListViewModel.addCrime(crime)
+                        callbacks?.onCrimeSelected(crimeId = crime.id)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner)
     }
     private fun updateUI(crimes: List<Crime>) {
         adapter = CrimeAdapter(crimes)
