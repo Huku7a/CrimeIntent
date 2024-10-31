@@ -3,9 +3,11 @@ package com.nkee.crimeintent.controller
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract.Contacts
+import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
 import android.text.format.DateFormat
@@ -16,11 +18,17 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.ImageView
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.nkee.crimeintent.R
 import com.nkee.crimeintent.data.ContactPicker
+import com.nkee.crimeintent.getScaledBitmap
 import com.nkee.crimeintent.model.Crime
+import java.io.File
 import java.util.Date
 import java.util.UUID
 
@@ -32,11 +40,15 @@ private const val DATE_FORMAT = "EEE, MMM, dd"
 
 class CrimeFragment : Fragment() {
     private lateinit var crime: Crime
+    private lateinit var photoFile: File
+    private lateinit var photoUri: Uri
+    private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
     private lateinit var reportButton: Button
     private lateinit var chooseSuspectButton: Button
+    private lateinit var photoView: ImageView
     private val crimeDetailViewModel by lazy { ViewModelProvider(this)[CrimeDetailViewModel::class.java] }
 
 
@@ -49,9 +61,18 @@ class CrimeFragment : Fragment() {
         } else {
             arguments?.getSerializable(ARG_CRIME_ID) as UUID
         }
+        cameraLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            requireActivity().revokeUriPermission(photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            updatePhoto()
+        }
         Log.d(TAG, "args bundle crime ID: $crimeId")
         // Загрузка преступления из базы данных
         crimeId?.let { crimeDetailViewModel.loadCrime(it) } ?: Log.w(TAG, "args bundle crime ID is null")
+    }
+
+    override fun onDetach() {
+        super.onDetach()
+        requireActivity().revokeUriPermission(photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -61,6 +82,7 @@ class CrimeFragment : Fragment() {
         solvedCheckBox = view.findViewById(R.id.crime_solved)
         reportButton = view.findViewById(R.id.crime_report)
         chooseSuspectButton = view.findViewById(R.id.crime_suspect)
+        photoView = view.findViewById(R.id.crime_photo)
 
         return view
     }
@@ -70,6 +92,8 @@ class CrimeFragment : Fragment() {
         crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner) { crime ->
             crime?.let {
                 this.crime = crime
+                photoFile = crimeDetailViewModel.getPhotoFile(crime)
+                photoUri = FileProvider.getUriForFile(requireActivity(), "com.nkee.crimeintent.fileProvider", photoFile)
                 updateUI()
             }
         }
@@ -92,6 +116,31 @@ class CrimeFragment : Fragment() {
         solvedCheckBox.apply {
             setOnCheckedChangeListener { _, isChecked ->
                 crime.isSolved = isChecked
+            }
+        }
+
+        photoView.apply {
+            val packageManager = requireActivity().packageManager
+            val captureImage = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+            val resolvedActivity: ResolveInfo? = packageManager.resolveActivity(captureImage, PackageManager.MATCH_DEFAULT_ONLY)
+            if (resolvedActivity == null) {
+                isEnabled = false
+            }
+
+            setOnClickListener {
+                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+
+                val cameraActivities: List<ResolveInfo> = packageManager.queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY)
+
+                for (cameraActivity in cameraActivities) {
+                    requireActivity().grantUriPermission(
+                        cameraActivity.activityInfo.packageName,
+                        photoUri,
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                }
+
+                cameraLauncher.launch(captureImage)
             }
         }
 
@@ -139,12 +188,12 @@ class CrimeFragment : Fragment() {
                 contactPicker.pickContact()
             }
 
-            val packageManager: PackageManager = requireActivity().packageManager
-            val resolvedActivity: ResolveInfo? =
-                packageManager.resolveActivity(Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI), PackageManager.MATCH_DEFAULT_ONLY)
-            if (resolvedActivity == null) {
-                isEnabled = false
-            }
+//            val packageManager: PackageManager = requireActivity().packageManager
+//            val resolvedActivity: ResolveInfo? =
+//                packageManager.resolveActivity(Intent(Intent.ACTION_PICK, Contacts.CONTENT_URI), PackageManager.MATCH_DEFAULT_ONLY)
+//            if (resolvedActivity == null) {
+//                isEnabled = false
+//            }
 
         }
     }
@@ -163,6 +212,16 @@ class CrimeFragment : Fragment() {
         }
         if (crime.suspect.isNotEmpty()) {
             chooseSuspectButton.text = crime.suspect
+        }
+        updatePhoto()
+    }
+
+    private fun updatePhoto() {
+        if (photoFile.exists()) {
+            val bitmap = getScaledBitmap(photoFile.path, requireActivity())
+            photoView.setImageBitmap(bitmap)
+        } else {
+            photoView.setImageDrawable(null)
         }
     }
 
